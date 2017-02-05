@@ -1,0 +1,6 @@
+[package]
+name = "plain_enum"
+version = "0.1.0"
+authors = ["philipp <philipp>"]
+
+[dependencies]
