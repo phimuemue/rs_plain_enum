@@ -29,7 +29,8 @@ mod plain_enum {
     }
 
     #[allow(dead_code)]
-    pub type EnumMap<PlainEnum, T> where PlainEnum: TEnumMapType<T> = PlainEnum::MapType;
+    // TODO rust: trait bounds are not (yet) enforced in type definitions (rust 1.16, 20170408)
+    pub type EnumMap<PlainEnum, T> = <PlainEnum as TEnumMapType<T>>::MapType;
 
     #[macro_export]
     macro_rules! acc_arr {
