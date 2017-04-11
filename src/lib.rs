@@ -162,6 +162,9 @@ mod tests {
     fn test_values() {
         assert_eq!(vec![ETest::E1, ETest::E2, ETest::E3], ETest::values().collect::<Vec<_>>());
         assert_eq!(ETest::values().count(), 3);
+        assert_eq!((3, Some(3)), ETest::values().size_hint());
+        assert_eq!(3, ETest::values().len());
+        assert!(ETest::values().eq(ETest::values().rev().rev()));
     }
 
     fn type_test(_map: &EnumMap<ETest, usize>) {}
