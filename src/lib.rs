@@ -1,3 +1,34 @@
+//! This crate offers some tools to deal with static enums. It offers a way to declare a simple
+//! enum, which then offers e.g. `values()` which can be used to iterate over the values of the enum.
+//! In addition, it offers a type `EnumMap` which is an array-backed map from enum values to some type.
+//!
+//! It offers a macro `plain_enum_mod` which declares an own module which contains a simple enum
+//! and the associated functionality:
+//!
+//! ```
+//! mod examples_not_to_be_used_by_clients {
+//!     #[macro_use]
+//!     use plain_enum::*;
+//!     plain_enum_mod!{example_mod_name, ExampleEnum {
+//!         V1,
+//!         V2,
+//!         SomeOtherValue,
+//!         LastValue, // note trailing comma
+//!     }}
+//!     
+//!     fn do_some_stuff() {
+//!         let map = ExampleEnum::map_from_fn(|example| // create a map from ExampleEnum to usize
+//!             example.to_usize() + 1                   // enum values convertible to usize
+//!         );
+//!         for ex in ExampleEnum::values() {            // iterating over the enum's values
+//!             assert_eq!(map[ex], ex.to_usize() + 1);
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! Internally, the macro generates a simple enum whose numeric values start counting at 0.
+
 #[macro_use]
 mod plain_enum {
     #[macro_export]
@@ -9,21 +40,34 @@ mod plain_enum {
     use std::iter;
     use std::ops;
 
+    /// This trait is implemented by enums declared via the `plain_enum_mod` macro.
+    /// Do not implement it yourself, but use this macro.
     pub trait TPlainEnum : Sized {
+        /// Checks whether `u` is the numerical representation of a valid enum value.
         fn valid_usize(u: usize) -> bool;
+        /// Converts `u` to the associated enum value. `assert`s that `u` is a valid value for the enum.
         fn from_usize(u: usize) -> Self;
+        /// Converts `u` to the associated enum value. if `u` is a valid value for the enum.
         fn checked_from_usize(u: usize) -> Option<Self>;
+        /// Converts `u` to the associated enum value, but wraps `u` it before conversion (i.e. it
+        /// applies the modulo operation with a modulus equal to the arity of the enum before converting).
         fn wrapped_from_usize(u: usize) -> Self;
+        /// Computes the difference between two enum values, wrapping around if necessary.
         fn wrapped_difference(self, e_other: Self) -> usize;
+        /// Converts the enum to its numerical representation.
         fn to_usize(self) -> usize;
+        /// Returns the arity, i.e. the smallest `usize` not representable by the enum.
         fn ubound_usize() -> usize;
+        /// Returns an iterator over the enum's values.
         fn values() -> iter::Map<ops::Range<usize>, fn(usize) -> Self> {
             (0..Self::ubound_usize())
                 .map(Self::from_usize)
         }
+        /// Adds a number to the enum, wrapping.
         fn wrapping_add(self, n_offset: usize) -> Self;
     }
 
+    /// Trait used to associated enum with EnumMap.
     pub trait TEnumMapType<T> : TPlainEnum {
         type MapType;
     }
@@ -93,12 +137,15 @@ mod plain_enum {
 
                 impl $enumname {
                     #[allow(dead_code)]
+                    /// Creates a enum map from enum values to a type, determined by `func`.
+                    /// The map will contain the results of applying `func` to each enum value.
                     pub fn map_from_fn<F, T>(mut func: F) -> Map<T>
                         where F: FnMut($enumname) -> T,
                     {
                         use self::$enumname::*;
                         Map::from_raw(acc_arr!(func, [], [$($enumvals,)*]))
                     }
+                    /// Creates a enum map from a raw array.
                     #[allow(dead_code)]
                     pub fn map_from_raw<T>(at: [T; ENUMSIZE]) -> Map<T> {
                         Map::from_raw(at)
@@ -180,4 +227,14 @@ mod tests {
             assert_eq!(map_test_to_usize[test], test.to_usize()+1);
         }
     }
+}
+
+pub mod examples_not_to_be_used_by_clients {
+    //! A sample module showing the capabilities of this crate. Do not use it or rely on it.
+    plain_enum_mod!{example_mod_name, ExampleEnum {
+        V1,
+        V2,
+        SomeOtherValue,
+        LastValue, // note trailing comma
+    }}
 }
