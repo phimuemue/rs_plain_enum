@@ -167,8 +167,6 @@ mod tests {
         assert!(ETest::values().eq(ETest::values().rev().rev()));
     }
 
-    fn type_test(_map: &EnumMap<ETest, usize>) {}
-
     #[test]
     fn test_enummap() {
         let mut map_test_to_usize = ETest::map_from_fn(|test| test.to_usize());
@@ -181,6 +179,5 @@ mod tests {
         for test in ETest::values() {
             assert_eq!(map_test_to_usize[test], test.to_usize()+1);
         }
-        type_test(&map_test_to_usize);
     }
 }
