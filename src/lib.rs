@@ -43,6 +43,8 @@ mod plain_enum {
     /// This trait is implemented by enums declared via the `plain_enum_mod` macro.
     /// Do not implement it yourself, but use this macro.
     pub trait TPlainEnum : Sized {
+        /// Arity, i.e. the smallest `usize` not representable by the enum.
+        const SIZE : usize;
         /// Checks whether `u` is the numerical representation of a valid enum value.
         fn valid_usize(u: usize) -> bool;
         /// Converts `u` to the associated enum value. `assert`s that `u` is a valid value for the enum.
@@ -56,11 +58,9 @@ mod plain_enum {
         fn wrapped_difference(self, e_other: Self) -> usize;
         /// Converts the enum to its numerical representation.
         fn to_usize(self) -> usize;
-        /// Returns the arity, i.e. the smallest `usize` not representable by the enum.
-        fn ubound_usize() -> usize;
         /// Returns an iterator over the enum's values.
         fn values() -> iter::Map<ops::Range<usize>, fn(usize) -> Self> {
-            (0..Self::ubound_usize())
+            (0..Self::SIZE)
                 .map(Self::from_usize)
         }
         /// Adds a number to the enum, wrapping.
@@ -100,14 +100,12 @@ mod plain_enum {
                     $($enumvals,)*
                 }
 
-                const ENUMSIZE : usize = enum_seq_len!(1, $($enumvals,)*);
-
                 impl TPlainEnum for $enumname {
-                    fn ubound_usize() -> usize {
-                        ENUMSIZE
-                    }
+
+                    const SIZE : usize = enum_seq_len!(1, $($enumvals,)*);
+
                     fn valid_usize(u: usize) -> bool {
-                        u < ENUMSIZE
+                        u < Self::SIZE
                     }
                     fn from_usize(u: usize) -> Self {
                         use std::mem;
@@ -122,16 +120,16 @@ mod plain_enum {
                         }
                     }
                     fn wrapped_from_usize(u: usize) -> Self {
-                        Self::from_usize(u % ENUMSIZE)
+                        Self::from_usize(u % Self::SIZE)
                     }
                     fn wrapped_difference(self, e_other: Self) -> usize {
-                        (self.to_usize() + ENUMSIZE - e_other.to_usize()) % ENUMSIZE
+                        (self.to_usize() + Self::SIZE - e_other.to_usize()) % Self::SIZE
                     }
                     fn to_usize(self) -> usize {
                         self as usize
                     }
                     fn wrapping_add(self, n_offset: usize) -> Self {
-                        Self::from_usize((self.to_usize() + n_offset) % ENUMSIZE)
+                        Self::from_usize((self.to_usize() + n_offset) % Self::SIZE)
                     }
                 }
 
@@ -147,7 +145,7 @@ mod plain_enum {
                     }
                     /// Creates a enum map from a raw array.
                     #[allow(dead_code)]
-                    pub fn map_from_raw<T>(at: [T; ENUMSIZE]) -> Map<T> {
+                    pub fn map_from_raw<T>(at: [T; Self::SIZE]) -> Map<T> {
                         Map::from_raw(at)
                     }
                 }
@@ -159,7 +157,7 @@ mod plain_enum {
                 use std::ops::{Index, IndexMut};
                 #[derive(PartialEq, Debug)]
                 pub struct Map<T> {
-                    m_at : [T; ENUMSIZE],
+                    m_at : [T; $enumname::SIZE],
                 }
                 impl<T> Index<$enumname> for Map<T> {
                     type Output = T;
@@ -177,7 +175,7 @@ mod plain_enum {
                     pub fn iter(&self) -> slice::Iter<T> {
                         self.m_at.iter()
                     }
-                    pub fn from_raw(at: [T; ENUMSIZE]) -> Map<T> {
+                    pub fn from_raw(at: [T; $enumname::SIZE]) -> Map<T> {
                         Map {
                             m_at : at,
                         }
@@ -202,7 +200,7 @@ mod tests {
     #[test]
     fn test_plain_enum() {
         assert_eq!(3, enum_seq_len!(1, E1, E2, E3,));
-        assert_eq!(3, ETest::ubound_usize());
+        assert_eq!(3, ETest::SIZE);
     }
 
     #[test]
