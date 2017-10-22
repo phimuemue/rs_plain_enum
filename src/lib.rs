@@ -88,14 +88,14 @@ mod plain_enum {
 
     #[macro_export]
     macro_rules! plain_enum_mod {
-        ($modname: ident, $enumname: ident {
+        ($modname: ident, derive($($derives:ident, )*), $enumname: ident {
             $($enumvals: ident,)*
         } ) => {
             mod $modname {
                 use plain_enum::*;
                 use std::slice;
                 #[repr(usize)]
-                #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, Hash)]
+                #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
                 pub enum $enumname {
                     $($enumvals,)*
                 }
@@ -183,7 +183,12 @@ mod plain_enum {
                 }
             }
             pub use self::$modname::$enumname;
-        }
+        };
+        ($modname: ident, $enumname: ident {
+            $($enumvals: ident,)*
+        } ) => {
+            plain_enum_mod!($modname, derive(), $enumname { $($enumvals,)* });
+        };
     }
 }
 pub use plain_enum::TPlainEnum;
@@ -196,6 +201,18 @@ mod tests {
     plain_enum_mod!{test_module, ETest {
         E1, E2, E3,
     }}
+    plain_enum_mod!{test_module_with_hash, derive(Hash,), ETestWithHash {
+        E1, E2, E3,
+    }}
+
+    #[test]
+    fn test_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(ETestWithHash::E1);
+        assert!(set.contains(&ETestWithHash::E1));
+        assert!(!set.contains(&ETestWithHash::E2));
+    }
 
     #[test]
     fn test_plain_enum() {
