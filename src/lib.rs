@@ -155,7 +155,7 @@ mod plain_enum {
                 }
 
                 use std::ops::{Index, IndexMut};
-                #[derive(PartialEq, Debug)]
+                #[derive(Clone, PartialEq, Debug)]
                 pub struct Map<T> {
                     m_at : [T; $enumname::SIZE],
                 }
@@ -212,6 +212,13 @@ mod tests {
         set.insert(ETestWithHash::E1);
         assert!(set.contains(&ETestWithHash::E1));
         assert!(!set.contains(&ETestWithHash::E2));
+    }
+
+    #[test]
+    fn test_clone() {
+        let map1 = ETest::map_from_fn(|e| e);
+        let map2 = map1.clone();
+        assert_eq!(map1, map2);
     }
 
     #[test]
