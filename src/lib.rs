@@ -88,7 +88,7 @@ mod plain_enum {
 
     #[macro_export]
     macro_rules! plain_enum_mod {
-        ($modname: ident, derive($($derives:ident, )*), $enumname: ident {
+        ($modname: ident, derive($($derives:ident, )*), map_derive($($mapderives:ident, )*), $enumname: ident {
             $($enumvals: ident,)*
         } ) => {
             mod $modname {
@@ -155,7 +155,7 @@ mod plain_enum {
                 }
 
                 use std::ops::{Index, IndexMut};
-                #[derive(Clone, PartialEq, Debug)]
+                #[derive(Clone, PartialEq, Eq, Debug, $($mapderives,)*)]
                 pub struct Map<T> {
                     m_at : [T; $enumname::SIZE],
                 }
@@ -187,7 +187,7 @@ mod plain_enum {
         ($modname: ident, $enumname: ident {
             $($enumvals: ident,)*
         } ) => {
-            plain_enum_mod!($modname, derive(), $enumname { $($enumvals,)* });
+            plain_enum_mod!($modname, derive(), map_derive(), $enumname { $($enumvals,)* });
         };
     }
 }
@@ -201,7 +201,7 @@ mod tests {
     plain_enum_mod!{test_module, ETest {
         E1, E2, E3,
     }}
-    plain_enum_mod!{test_module_with_hash, derive(Hash,), ETestWithHash {
+    plain_enum_mod!{test_module_with_hash, derive(Hash,), map_derive(Hash,), ETestWithHash {
         E1, E2, E3,
     }}
 
@@ -212,6 +212,9 @@ mod tests {
         set.insert(ETestWithHash::E1);
         assert!(set.contains(&ETestWithHash::E1));
         assert!(!set.contains(&ETestWithHash::E2));
+        let enummap = ETestWithHash::map_from_fn(|e| e);
+        let mut set2 = HashSet::new();
+        set2.insert(enummap);
     }
 
     #[test]
