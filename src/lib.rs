@@ -37,6 +37,7 @@ mod plain_enum {
         ($n: expr, $enumval: ident, $($enumvals: ident,)*) => (enum_seq_len!(($n + 1), $($enumvals,)*));
     }
 
+    use std;
     use std::iter;
     use std::ops;
 
@@ -68,13 +69,19 @@ mod plain_enum {
     }
 
     /// Trait used to associated enum with EnumMap.
-    pub trait TEnumMapType<T> : TPlainEnum {
-        type MapType;
+    /// Needed because of https://github.com/rust-lang/rust/issues/46969.
+    /// TODO Rust: Once this is solved, use array directly within EnumMap.
+    pub trait TInternalEnumMapType<T> : TPlainEnum {
+        type InternalEnumMapType;
     }
 
     #[allow(dead_code)]
-    // TODO rust: trait bounds are not (yet) enforced in type definitions (rust 1.16, 20170408)
-    pub type EnumMap<PlainEnum, T> = <PlainEnum as TEnumMapType<T>>::MapType;
+    pub struct EnumMap<E: TPlainEnum, V>
+        where E: TPlainEnum + TInternalEnumMapType<V>,
+    {
+        phantome: std::marker::PhantomData<E>,
+        a: E::InternalEnumMapType,
+    }
 
     #[macro_export]
     macro_rules! acc_arr {
@@ -150,8 +157,8 @@ mod plain_enum {
                     }
                 }
 
-                impl<T> TEnumMapType<T> for $enumname {
-                    type MapType = Map<T>;
+                impl<V> TInternalEnumMapType<V> for $enumname {
+                    type InternalEnumMapType = [V; $enumname::SIZE];
                 }
 
                 use std::ops::{Index, IndexMut};
@@ -192,8 +199,8 @@ mod plain_enum {
     }
 }
 pub use plain_enum::TPlainEnum;
-pub use plain_enum::TEnumMapType;
 pub use plain_enum::EnumMap;
+pub use plain_enum::TInternalEnumMapType;
 
 #[cfg(test)]
 mod tests {
