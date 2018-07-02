@@ -89,6 +89,14 @@ mod plain_enum {
         a: E::InternalEnumMapType,
     }
 
+    macro_rules! forward_fn {
+        ($(@$pub:tt)* fn $func:ident (&$(@$mut:tt)* self, $($param:ident : $type:ty,)*) -> $R:ty) => {
+            $($pub)* fn $func(&$($mut)* self, $($param : $type,)*) -> $R {
+                E::$func(&$($mut)* self.a, $($param,)*)
+            }
+        };
+    }
+
     impl<E, V> EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
@@ -98,24 +106,18 @@ mod plain_enum {
                 a,
             }
         }
-        pub fn iter(&self) -> slice::Iter<V> {
-            E::iter(&self.a)
-        }
+        forward_fn!(@pub fn iter(&self,) -> slice::Iter<V>);
     }
     impl<E, V> Index<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
         type Output = V;
-        fn index(&self, e : E) -> &V {
-            E::index(&self.a, e)
-        }
+        forward_fn!(fn index(&self, e: E,) -> &V);
     }
     impl<E, V> IndexMut<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
-        fn index_mut(&mut self, e : E) -> &mut Self::Output {
-            E::index_mut(&mut self.a, e)
-        }
+        forward_fn!(fn index_mut(&@mut self, e: E,) -> &mut Self::Output);
     }
 
     #[macro_export]
