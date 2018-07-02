@@ -40,6 +40,8 @@ mod plain_enum {
     use std;
     use std::iter;
     use std::ops;
+    use std::ops::{Index, IndexMut};
+    use std::slice;
 
     /// This trait is implemented by enums declared via the `plain_enum_mod` macro.
     /// Do not implement it yourself, but use this macro.
@@ -71,16 +73,49 @@ mod plain_enum {
     /// Trait used to associated enum with EnumMap.
     /// Needed because of https://github.com/rust-lang/rust/issues/46969.
     /// TODO Rust: Once this is solved, use array directly within EnumMap.
-    pub trait TInternalEnumMapType<T> : TPlainEnum {
+    pub trait TInternalEnumMapType<V> : TPlainEnum {
         type InternalEnumMapType;
+        fn index(a: &Self::InternalEnumMapType, e: Self) -> &V;
+        fn index_mut(a: &mut Self::InternalEnumMapType, e: Self) -> &mut V;
+        fn iter(a: &Self::InternalEnumMapType) -> slice::Iter<V>;
     }
 
     #[allow(dead_code)]
+    #[derive(Eq, PartialEq, Hash, Clone, Debug)]
     pub struct EnumMap<E: TPlainEnum, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
         phantome: std::marker::PhantomData<E>,
         a: E::InternalEnumMapType,
+    }
+
+    impl<E, V> EnumMap<E, V>
+        where E: TPlainEnum + TInternalEnumMapType<V>,
+    {
+        pub fn from_raw(a: E::InternalEnumMapType) -> Self {
+            EnumMap{
+                phantome: std::marker::PhantomData{},
+                a,
+            }
+        }
+        pub fn iter(&self) -> slice::Iter<V> {
+            E::iter(&self.a)
+        }
+    }
+    impl<E, V> Index<E> for EnumMap<E, V>
+        where E: TPlainEnum + TInternalEnumMapType<V>,
+    {
+        type Output = V;
+        fn index(&self, e : E) -> &V {
+            E::index(&self.a, e)
+        }
+    }
+    impl<E, V> IndexMut<E> for EnumMap<E, V>
+        where E: TPlainEnum + TInternalEnumMapType<V>,
+    {
+        fn index_mut(&mut self, e : E) -> &mut Self::Output {
+            E::index_mut(&mut self.a, e)
+        }
     }
 
     #[macro_export]
@@ -140,52 +175,33 @@ mod plain_enum {
                     }
                 }
 
+                impl<V> TInternalEnumMapType<V> for $enumname {
+                    type InternalEnumMapType = [V; $enumname::SIZE];
+                    fn index(a: &Self::InternalEnumMapType, e: Self) -> &V {
+                        &a[e.to_usize()]
+                    }
+                    fn index_mut(a: &mut Self::InternalEnumMapType, e: Self) -> &mut V {
+                        &mut a[e.to_usize()]
+                    }
+                    fn iter(a: &Self::InternalEnumMapType) -> slice::Iter<V> {
+                        a.iter()
+                    }
+                }
+
                 impl $enumname {
                     #[allow(dead_code)]
                     /// Creates a enum map from enum values to a type, determined by `func`.
                     /// The map will contain the results of applying `func` to each enum value.
-                    pub fn map_from_fn<F, T>(mut func: F) -> Map<T>
+                    pub fn map_from_fn<F, T>(mut func: F) -> EnumMap<$enumname, T>
                         where F: FnMut($enumname) -> T,
                     {
                         use self::$enumname::*;
-                        Map::from_raw(acc_arr!(func, [], [$($enumvals,)*]))
+                        EnumMap::from_raw(acc_arr!(func, [], [$($enumvals,)*]))
                     }
                     /// Creates a enum map from a raw array.
                     #[allow(dead_code)]
-                    pub fn map_from_raw<T>(at: [T; Self::SIZE]) -> Map<T> {
-                        Map::from_raw(at)
-                    }
-                }
-
-                impl<V> TInternalEnumMapType<V> for $enumname {
-                    type InternalEnumMapType = [V; $enumname::SIZE];
-                }
-
-                use std::ops::{Index, IndexMut};
-                #[derive(Clone, PartialEq, Eq, Debug, $($mapderives,)*)]
-                pub struct Map<T> {
-                    m_at : [T; $enumname::SIZE],
-                }
-                impl<T> Index<$enumname> for Map<T> {
-                    type Output = T;
-                    fn index(&self, e : $enumname) -> &T {
-                        &self.m_at[e.to_usize()]
-                    }
-                }
-                impl<T> IndexMut<$enumname> for Map<T> {
-                    fn index_mut(&mut self, e : $enumname) -> &mut Self::Output {
-                        &mut self.m_at[e.to_usize()]
-                    }
-                }
-                impl<T> Map<T> {
-                    #[allow(dead_code)]
-                    pub fn iter(&self) -> slice::Iter<T> {
-                        self.m_at.iter()
-                    }
-                    pub fn from_raw(at: [T; $enumname::SIZE]) -> Map<T> {
-                        Map {
-                            m_at : at,
-                        }
+                    pub fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V>>::InternalEnumMapType) -> EnumMap<$enumname, V> {
+                        EnumMap::from_raw(a)
                     }
                 }
             }
@@ -257,6 +273,9 @@ mod tests {
         }
         for test in ETest::values() {
             assert_eq!(map_test_to_usize[test], test.to_usize()+1);
+        }
+        for v in map_test_to_usize.iter().zip(ETest::values()) {
+            assert_eq!(*v.0, v.1.to_usize()+1);
         }
     }
 }
