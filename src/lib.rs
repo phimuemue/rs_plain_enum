@@ -68,6 +68,12 @@ mod plain_enum {
         }
         /// Adds a number to the enum, wrapping.
         fn wrapping_add(self, n_offset: usize) -> Self;
+        /// Creates a enum map from enum values to a type, determined by `func`.
+        /// The map will contain the results of applying `func` to each enum value.
+        fn map_from_fn<F, T>(/*mut*/ func: F) -> EnumMap<Self, T>
+            where F: FnMut(Self) -> T,
+                  Self: TInternalEnumMapType<T>,
+        ;
     }
 
     /// Trait used to associated enum with EnumMap.
@@ -107,6 +113,15 @@ mod plain_enum {
             }
         }
         forward_fn!(@pub fn iter(&self,) -> slice::Iter<V>);
+        pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
+            where FnMap: Fn(&V) -> W,
+                  E: TInternalEnumMapType<W>,
+                  E: TPlainEnum,
+        {
+            E::map_from_fn(|e|
+                fn_map(&self[e])
+            )
+        }
     }
     impl<E, V> Index<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
@@ -175,6 +190,12 @@ mod plain_enum {
                     fn wrapping_add(self, n_offset: usize) -> Self {
                         Self::from_usize((self.to_usize() + n_offset) % Self::SIZE)
                     }
+                    fn map_from_fn<F, T>(mut func: F) -> EnumMap<$enumname, T>
+                        where F: FnMut($enumname) -> T,
+                    {
+                        use self::$enumname::*;
+                        EnumMap::from_raw(acc_arr!(func, [], [$($enumvals,)*]))
+                    }
                 }
 
                 impl<V> TInternalEnumMapType<V> for $enumname {
@@ -191,15 +212,6 @@ mod plain_enum {
                 }
 
                 impl $enumname {
-                    #[allow(dead_code)]
-                    /// Creates a enum map from enum values to a type, determined by `func`.
-                    /// The map will contain the results of applying `func` to each enum value.
-                    pub fn map_from_fn<F, T>(mut func: F) -> EnumMap<$enumname, T>
-                        where F: FnMut($enumname) -> T,
-                    {
-                        use self::$enumname::*;
-                        EnumMap::from_raw(acc_arr!(func, [], [$($enumvals,)*]))
-                    }
                     /// Creates a enum map from a raw array.
                     #[allow(dead_code)]
                     pub fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V>>::InternalEnumMapType) -> EnumMap<$enumname, V> {
@@ -278,6 +290,9 @@ mod tests {
         }
         for v in map_test_to_usize.iter().zip(ETest::values()) {
             assert_eq!(*v.0, v.1.to_usize()+1);
+        }
+        for v in map_test_to_usize.map(|n| Some(n*n)).iter() {
+            assert!(v.is_some());
         }
     }
 }
