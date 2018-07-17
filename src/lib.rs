@@ -47,9 +47,12 @@ mod plain_enum {
             for_each_prefix!($m, [$($acc,)* $arg0,], [$($arg,)*]);
         };
     );
-    pub trait TArrayFromFn<ArrayElement> {
+    pub trait TArrayFromFn<T> {
         fn array_from_fn<F>(func: F) -> Self
-            where F: FnMut(usize) -> ArrayElement;
+            where F: FnMut(usize) -> T;
+        fn index(a: &Self, e: usize) -> &T;
+        fn index_mut(a: &mut Self, e: usize) -> &mut T;
+        fn iter(a: &Self) -> slice::Iter<T>;
     }
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!(0, $($i,)*)] {
@@ -57,6 +60,15 @@ mod plain_enum {
                 where F: FnMut(usize) -> T
             {
                 [$(func($i),)*]
+            }
+            fn index(a: &Self, e: usize) -> &T {
+                &a[e]
+            }
+            fn index_mut(a: &mut Self, e: usize) -> &mut T {
+                &mut a[e]
+            }
+            fn iter(a: &Self) -> slice::Iter<T> {
+                a.iter()
             }
         }
     }}
@@ -141,9 +153,6 @@ mod plain_enum {
     /// TODO Rust: Once this is solved, use array directly within EnumMap.
     pub trait TInternalEnumMapType<V> : TPlainEnum {
         type InternalEnumMapType : TArrayFromFn<V>;
-        fn index(a: &Self::InternalEnumMapType, e: Self) -> &V;
-        fn index_mut(a: &mut Self::InternalEnumMapType, e: Self) -> &mut V;
-        fn iter(a: &Self::InternalEnumMapType) -> slice::Iter<V>;
     }
 
     #[allow(dead_code)]
@@ -155,6 +164,7 @@ mod plain_enum {
         a: E::InternalEnumMapType,
     }
 
+    /*
     macro_rules! forward_fn {
         ($(@$pub:tt)* fn $func:ident (&$(@$mut:tt)* self, $($param:ident : $type:ty,)*) -> $R:ty) => {
             $($pub)* fn $func(&$($mut)* self, $($param : $type,)*) -> $R {
@@ -162,6 +172,7 @@ mod plain_enum {
             }
         };
     }
+    */
 
     impl<E, V> EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
@@ -172,7 +183,9 @@ mod plain_enum {
                 a,
             }
         }
-        forward_fn!(@pub fn iter(&self,) -> slice::Iter<V>);
+        pub fn iter(&self) -> slice::Iter<V> {
+            TArrayFromFn::iter(&self.a)
+        }
         pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
             where FnMap: Fn(&V) -> W,
                   E: TInternalEnumMapType<W>,
@@ -187,12 +200,16 @@ mod plain_enum {
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
         type Output = V;
-        forward_fn!(fn index(&self, e: E,) -> &V);
+        fn index(&self, e: E) -> &V {
+            TArrayFromFn::index(&self.a, e.to_usize())
+        }
     }
     impl<E, V> IndexMut<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
-        forward_fn!(fn index_mut(&@mut self, e: E,) -> &mut Self::Output);
+        fn index_mut(&mut self, e: E) -> &mut Self::Output {
+            TArrayFromFn::index_mut(&mut self.a, e.to_usize())
+        }
     }
 
     #[macro_export]
@@ -212,7 +229,6 @@ mod plain_enum {
         } ) => {
             mod $modname {
                 use plain_enum::*;
-                use std::slice;
                 #[repr(usize)]
                 #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
                 pub enum $enumname {
@@ -235,15 +251,6 @@ mod plain_enum {
 
                 impl<V> TInternalEnumMapType<V> for $enumname {
                     type InternalEnumMapType = [V; $enumname::SIZE];
-                    fn index(a: &Self::InternalEnumMapType, e: Self) -> &V {
-                        &a[e.to_usize()]
-                    }
-                    fn index_mut(a: &mut Self::InternalEnumMapType, e: Self) -> &mut V {
-                        &mut a[e.to_usize()]
-                    }
-                    fn iter(a: &Self::InternalEnumMapType) -> slice::Iter<V> {
-                        a.iter()
-                    }
                 }
 
                 impl $enumname {
