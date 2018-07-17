@@ -48,26 +48,41 @@ mod plain_enum {
     pub trait TPlainEnum : Sized {
         /// Arity, i.e. the smallest `usize` not representable by the enum.
         const SIZE : usize;
-        /// Checks whether `u` is the numerical representation of a valid enum value.
-        fn valid_usize(u: usize) -> bool;
         /// Converts `u` to the associated enum value. `assert`s that `u` is a valid value for the enum.
         fn from_usize(u: usize) -> Self;
-        /// Converts `u` to the associated enum value. if `u` is a valid value for the enum.
-        fn checked_from_usize(u: usize) -> Option<Self>;
-        /// Converts `u` to the associated enum value, but wraps `u` it before conversion (i.e. it
-        /// applies the modulo operation with a modulus equal to the arity of the enum before converting).
-        fn wrapped_from_usize(u: usize) -> Self;
-        /// Computes the difference between two enum values, wrapping around if necessary.
-        fn wrapped_difference(self, e_other: Self) -> usize;
         /// Converts the enum to its numerical representation.
         fn to_usize(self) -> usize;
+
+        /// Checks whether `u` is the numerical representation of a valid enum value.
+        fn valid_usize(u: usize) -> bool {
+            u < Self::SIZE
+        }
+        /// Converts `u` to the associated enum value. if `u` is a valid value for the enum.
+        fn checked_from_usize(u: usize) -> Option<Self> {
+            if Self::valid_usize(u) {
+                Some(Self::from_usize(u))
+            } else {
+                None
+            }
+        }
+        /// Converts `u` to the associated enum value, but wraps `u` it before conversion (i.e. it
+        /// applies the modulo operation with a modulus equal to the arity of the enum before converting).
+        fn wrapped_from_usize(u: usize) -> Self {
+            Self::from_usize(u % Self::SIZE)
+        }
+        /// Computes the difference between two enum values, wrapping around if necessary.
+        fn wrapped_difference(self, e_other: Self) -> usize {
+            (self.to_usize() + Self::SIZE - e_other.to_usize()) % Self::SIZE
+        }
         /// Returns an iterator over the enum's values.
         fn values() -> iter::Map<ops::Range<usize>, fn(usize) -> Self> {
             (0..Self::SIZE)
                 .map(Self::from_usize)
         }
         /// Adds a number to the enum, wrapping.
-        fn wrapping_add(self, n_offset: usize) -> Self;
+        fn wrapping_add(self, n_offset: usize) -> Self {
+            Self::from_usize((self.to_usize() + n_offset) % Self::SIZE)
+        }
         /// Creates a enum map from enum values to a type, determined by `func`.
         /// The map will contain the results of applying `func` to each enum value.
         fn map_from_fn<F, T>(/*mut*/ func: F) -> EnumMap<Self, T>
@@ -163,32 +178,13 @@ mod plain_enum {
 
                     const SIZE : usize = enum_seq_len!(1, $($enumvals,)*);
 
-                    fn valid_usize(u: usize) -> bool {
-                        u < Self::SIZE
-                    }
                     fn from_usize(u: usize) -> Self {
                         use std::mem;
                         debug_assert!(Self::valid_usize(u));
                         unsafe{mem::transmute(u)}
                     }
-                    fn checked_from_usize(u: usize) -> Option<Self> {
-                        if Self::valid_usize(u) {
-                            Some(Self::from_usize(u))
-                        } else {
-                            None
-                        }
-                    }
-                    fn wrapped_from_usize(u: usize) -> Self {
-                        Self::from_usize(u % Self::SIZE)
-                    }
-                    fn wrapped_difference(self, e_other: Self) -> usize {
-                        (self.to_usize() + Self::SIZE - e_other.to_usize()) % Self::SIZE
-                    }
                     fn to_usize(self) -> usize {
                         self as usize
-                    }
-                    fn wrapping_add(self, n_offset: usize) -> Self {
-                        Self::from_usize((self.to_usize() + n_offset) % Self::SIZE)
                     }
                     fn map_from_fn<F, T>(mut func: F) -> EnumMap<$enumname, T>
                         where F: FnMut($enumname) -> T,
