@@ -216,7 +216,7 @@ mod plain_enum {
                 #[repr(usize)]
                 #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
                 pub enum $enumname {
-                    $($enumvals,)*
+                    $(#[allow(dead_code)] $enumvals,)*
                 }
 
                 impl TPlainEnum for $enumname {
