@@ -329,12 +329,3 @@ mod tests {
     }
 }
 
-pub mod examples_not_to_be_used_by_clients {
-    //! A sample module showing the capabilities of this crate. Do not use it or rely on it.
-    plain_enum_mod!{example_mod_name, ExampleEnum {
-        V1,
-        V2,
-        SomeOtherValue,
-        LastValue, // note trailing comma
-    }}
-}
