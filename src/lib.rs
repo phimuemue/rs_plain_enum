@@ -164,16 +164,6 @@ mod plain_enum {
         a: E::InternalEnumMapType,
     }
 
-    /*
-    macro_rules! forward_fn {
-        ($(@$pub:tt)* fn $func:ident (&$(@$mut:tt)* self, $($param:ident : $type:ty,)*) -> $R:ty) => {
-            $($pub)* fn $func(&$($mut)* self, $($param : $type,)*) -> $R {
-                E::$func(&$($mut)* self.a, $($param,)*)
-            }
-        };
-    }
-    */
-
     impl<E, V> EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
