@@ -185,6 +185,9 @@ mod plain_enum {
                 fn_map(&self[e])
             )
         }
+        pub fn into_raw(self) -> E::InternalEnumMapType {
+            self.a
+        }
     }
     impl<E, V> Index<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
