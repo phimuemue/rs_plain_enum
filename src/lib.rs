@@ -167,15 +167,18 @@ mod plain_enum {
     impl<E, V> EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
+        /// Constructs an `EnumMap` from the underlying array type.
         pub fn from_raw(a: E::InternalEnumMapType) -> Self {
             EnumMap{
                 phantome: std::marker::PhantomData{},
                 a,
             }
         }
+        /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<V> {
             TArrayFromFn::iter(&self.a)
         }
+        /// Maps the values in a map. (Similar to `Iterator::map`.)
         pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
             where FnMap: Fn(&V) -> W,
                   E: TInternalEnumMapType<W>,
@@ -185,6 +188,7 @@ mod plain_enum {
                 fn_map(&self[e])
             )
         }
+        /// Consumes an `EnumMap` and returns the underlying array.
         pub fn into_raw(self) -> E::InternalEnumMapType {
             self.a
         }
