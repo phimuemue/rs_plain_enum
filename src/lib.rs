@@ -226,6 +226,23 @@ mod plain_enum {
         };
     }
 
+
+    #[macro_export]
+    macro_rules! internal_impl_plainenum {($enumname: ident, $enumsize: expr, $from_usize: expr,) => {
+        impl TPlainEnum for $enumname {
+            const SIZE : usize = $enumsize;
+            fn from_usize(u: usize) -> Self {
+                $from_usize(u)
+            }
+            fn to_usize(self) -> usize {
+                self as usize
+            }
+        }
+        impl<V> TInternalEnumMapType<V> for $enumname {
+            type InternalEnumMapType = [V; $enumname::SIZE];
+        }
+    }}
+
     #[macro_export]
     macro_rules! plain_enum_mod {
         ($modname: ident, derive($($derives:ident, )*), map_derive($($mapderives:ident, )*), $enumname: ident {
@@ -239,23 +256,16 @@ mod plain_enum {
                     $(#[allow(dead_code)] $enumvals,)*
                 }
 
-                impl TPlainEnum for $enumname {
-
-                    const SIZE : usize = enum_seq_len!(0, $($enumvals,)*);
-
-                    fn from_usize(u: usize) -> Self {
+                const SIZE : usize = enum_seq_len!(0, $($enumvals,)*);
+                internal_impl_plainenum!(
+                    $enumname,
+                    SIZE,
+                    |u|{
                         use std::mem;
                         debug_assert!(Self::valid_usize(u));
                         unsafe{mem::transmute(u)}
-                    }
-                    fn to_usize(self) -> usize {
-                        self as usize
-                    }
-                }
-
-                impl<V> TInternalEnumMapType<V> for $enumname {
-                    type InternalEnumMapType = [V; $enumname::SIZE];
-                }
+                    },
+                );
             }
             pub use self::$modname::$enumname;
         };
@@ -266,9 +276,19 @@ mod plain_enum {
         };
     }
 }
+
 pub use plain_enum::TPlainEnum;
 pub use plain_enum::EnumMap;
 pub use plain_enum::TInternalEnumMapType;
+
+internal_impl_plainenum!(
+    bool,
+    2,
+    |u|{
+        debug_assert!(u==0 || u==1);
+        0!=u
+    },
+);
 
 #[cfg(test)]
 mod tests {
@@ -332,6 +352,13 @@ mod tests {
         for v in map_test_to_usize.map(|n| Some(n*n)).iter() {
             assert!(v.is_some());
         }
+    }
+
+    #[test]
+    fn test_bool() {
+        let mapbn = bool::map_from_fn(|b| b as usize);
+        assert_eq!(mapbn[false], 0);
+        assert_eq!(mapbn[true], 1);
     }
 }
 
