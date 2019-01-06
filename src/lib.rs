@@ -146,6 +146,13 @@ mod plain_enum {
         {
             EnumMap::from_raw(TArrayFromFn::array_from_fn(|i| func(Self::from_usize(i))))
         }
+        /// Creates a enum map from a raw array.
+        fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V>>::InternalEnumMapType) -> EnumMap<Self, V>
+            where
+                Self: TInternalEnumMapType<V>, // TODORUST
+        {
+            EnumMap::from_raw(a)
+        }
     }
 
     /// Trait used to associated enum with EnumMap.
@@ -248,14 +255,6 @@ mod plain_enum {
 
                 impl<V> TInternalEnumMapType<V> for $enumname {
                     type InternalEnumMapType = [V; $enumname::SIZE];
-                }
-
-                impl $enumname {
-                    /// Creates a enum map from a raw array.
-                    #[allow(dead_code)]
-                    pub fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V>>::InternalEnumMapType) -> EnumMap<$enumname, V> {
-                        EnumMap::from_raw(a)
-                    }
                 }
             }
             pub use self::$modname::$enumname;
