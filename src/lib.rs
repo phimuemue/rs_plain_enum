@@ -29,11 +29,12 @@
 //!
 //! Internally, the macro generates a simple enum whose numeric values start counting at 0.
 
-#![recursion_limit="512"]
+#![recursion_limit="256"] // my tests indicate that 139 would be enough but I do not know how if that is enough in foreign code, so I chose the limit suggested by rustc
 #[macro_export]
 macro_rules! enum_seq_len {
-    ($n: expr, ) => ($n);
-    ($n: expr, $enumval: tt, $($enumvals: tt,)*) => (enum_seq_len!(($n + 1), $($enumvals,)*));
+    () => (0);
+    ($($enumval_0: tt, $enumval_1: tt,)*) => (2*(enum_seq_len!($($enumval_0,)*)));
+    ($enumval: tt, $($enumval_0: tt, $enumval_1: tt,)*) => (1+2*(enum_seq_len!($($enumval_0,)*)));
 }
 
 #[macro_use]
@@ -55,7 +56,7 @@ mod plain_enum {
         fn iter(a: &Self) -> slice::Iter<T>;
     }
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
-        impl<T> TArrayFromFn<T> for [T; enum_seq_len!(0, $($i,)*)] {
+        impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
             fn array_from_fn<F>(mut func: F) -> Self
                 where F: FnMut(usize) -> T
             {
@@ -256,7 +257,7 @@ mod plain_enum {
                     $(#[allow(dead_code)] $enumvals,)*
                 }
 
-                const SIZE : usize = enum_seq_len!(0, $($enumvals,)*);
+                const SIZE : usize = enum_seq_len!($($enumvals,)*);
                 internal_impl_plainenum!(
                     $enumname,
                     SIZE,
@@ -320,8 +321,17 @@ mod tests {
     }
 
     #[test]
+    fn test_enum_seq_len() {
+        assert_eq!(0, enum_seq_len!());
+        assert_eq!(1, enum_seq_len!(E1,));
+        assert_eq!(2, enum_seq_len!(E1, E3,));
+        assert_eq!(3, enum_seq_len!(E1, E2, E3,));
+        assert_eq!(14, enum_seq_len!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,));
+        assert_eq!(13, enum_seq_len!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, ));
+    }
+
+    #[test]
     fn test_plain_enum() {
-        assert_eq!(3, enum_seq_len!(0, E1, E2, E3,));
         assert_eq!(3, ETest::SIZE);
     }
 
