@@ -164,7 +164,7 @@ mod plain_enum {
     }
 
     #[allow(dead_code)]
-    #[derive(Eq, PartialEq, Hash, Clone, Debug)]
+    #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
     pub struct EnumMap<E: TPlainEnum, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
     {
