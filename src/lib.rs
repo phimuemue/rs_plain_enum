@@ -99,6 +99,8 @@ mod plain_enum {
     use std::ops::{Index, IndexMut};
     use std::slice;
 
+    pub struct SWrappedDifference<E>(pub E);
+
     /// This trait is implemented by enums declared via the `plain_enum_mod` macro.
     /// Do not implement it yourself, but use this macro.
     pub trait TPlainEnum : Sized {
@@ -127,8 +129,12 @@ mod plain_enum {
             unsafe { Self::from_usize(u % Self::SIZE) }
         }
         /// Computes the difference between two enum values, wrapping around if necessary.
-        fn wrapped_difference(self, e_other: Self) -> usize {
+        fn wrapped_difference_usize(self, e_other: Self) -> usize {
             (self.to_usize() + Self::SIZE - e_other.to_usize()) % Self::SIZE
+        }
+        /// Computes the difference between two enum values, wrapping around if necessary, and converts it to an enum value.
+        fn wrapped_difference(self, e_other: Self) -> SWrappedDifference<Self> {
+            SWrappedDifference(unsafe{Self::from_usize(self.wrapped_difference_usize(e_other))})
         }
         /// Returns an iterator over the enum's values.
         fn values() -> iter::Map<ops::Range<usize>, fn(usize) -> Self> {
@@ -369,6 +375,19 @@ mod tests {
         let mapbn = bool::map_from_fn(|b| b as usize);
         assert_eq!(mapbn[false], 0);
         assert_eq!(mapbn[true], 1);
+    }
+
+    #[test]
+    fn test_wrapped_difference() {
+        assert_eq!(ETest::E3.wrapped_difference_usize(ETest::E1), 2);
+        assert_eq!(ETest::E1.wrapped_difference_usize(ETest::E3), 1);
+        assert_eq!(ETest::E3.wrapped_difference(ETest::E1).0, ETest::E3);
+        assert_eq!(ETest::E1.wrapped_difference(ETest::E3).0, ETest::E2);
+        for e1 in ETest::values() {
+            for e2 in ETest::values() {
+                assert_eq!(e1.wrapped_difference_usize(e2), e1.wrapped_difference(e2).0.to_usize());
+            }
+        }
     }
 }
 
