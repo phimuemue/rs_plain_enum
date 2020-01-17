@@ -104,8 +104,8 @@ mod plain_enum {
     pub trait TPlainEnum : Sized {
         /// Arity, i.e. the smallest `usize` not representable by the enum.
         const SIZE : usize;
-        /// Converts `u` to the associated enum value. `assert`s that `u` is a valid value for the enum.
-        fn from_usize(u: usize) -> Self;
+        /// Converts `u` to the associated enum value. Assumes that `u` is a valid value for the enum, and is, thus, unsafe.
+        unsafe fn from_usize(u: usize) -> Self;
         /// Converts the enum to its numerical representation.
         fn to_usize(self) -> usize;
 
@@ -116,7 +116,7 @@ mod plain_enum {
         /// Converts `u` to the associated enum value. if `u` is a valid value for the enum.
         fn checked_from_usize(u: usize) -> Option<Self> {
             if Self::valid_usize(u) {
-                Some(Self::from_usize(u))
+                unsafe { Some(Self::from_usize(u)) }
             } else {
                 None
             }
@@ -124,7 +124,7 @@ mod plain_enum {
         /// Converts `u` to the associated enum value, but wraps `u` it before conversion (i.e. it
         /// applies the modulo operation with a modulus equal to the arity of the enum before converting).
         fn wrapped_from_usize(u: usize) -> Self {
-            Self::from_usize(u % Self::SIZE)
+            unsafe { Self::from_usize(u % Self::SIZE) }
         }
         /// Computes the difference between two enum values, wrapping around if necessary.
         fn wrapped_difference(self, e_other: Self) -> usize {
@@ -133,11 +133,11 @@ mod plain_enum {
         /// Returns an iterator over the enum's values.
         fn values() -> iter::Map<ops::Range<usize>, fn(usize) -> Self> {
             (0..Self::SIZE)
-                .map(Self::from_usize)
+                .map(|u| unsafe { Self::from_usize(u) })
         }
         /// Adds a number to the enum, wrapping.
         fn wrapping_add(self, n_offset: usize) -> Self {
-            Self::from_usize((self.to_usize() + n_offset) % Self::SIZE)
+            unsafe { Self::from_usize((self.to_usize() + n_offset) % Self::SIZE) }
         }
         /// Creates a enum map from enum values to a type, determined by `func`.
         /// The map will contain the results of applying `func` to each enum value.
@@ -145,7 +145,7 @@ mod plain_enum {
             where F: FnMut(Self) -> T,
                   Self: TInternalEnumMapType<T>,
         {
-            EnumMap::from_raw(TArrayFromFn::array_from_fn(|i| func(Self::from_usize(i))))
+            EnumMap::from_raw(TArrayFromFn::array_from_fn(|i| func(unsafe{Self::from_usize(i)})))
         }
         /// Creates a enum map from a raw array.
         fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V>>::InternalEnumMapType) -> EnumMap<Self, V>
@@ -232,7 +232,7 @@ mod plain_enum {
     macro_rules! internal_impl_plainenum {($enumname: ident, $enumsize: expr, $from_usize: expr,) => {
         impl TPlainEnum for $enumname {
             const SIZE : usize = $enumsize;
-            fn from_usize(u: usize) -> Self {
+            unsafe fn from_usize(u: usize) -> Self {
                 $from_usize(u)
             }
             fn to_usize(self) -> usize {
@@ -264,7 +264,7 @@ mod plain_enum {
                     |u|{
                         use std::mem;
                         debug_assert!(Self::valid_usize(u));
-                        unsafe{mem::transmute(u)}
+                        mem::transmute(u)
                     },
                 );
             }
