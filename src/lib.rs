@@ -297,6 +297,20 @@ internal_impl_plainenum!(
     },
 );
 
+impl TPlainEnum for () {
+    const SIZE : usize = 1;
+    unsafe fn from_usize(u: usize) -> Self {
+        debug_assert_eq!(0, u);
+        ()
+    }
+    fn to_usize(self) -> usize {
+        0
+    }
+}
+impl<V> TInternalEnumMapType<V> for () {
+    type InternalEnumMapType = [V; <() as TPlainEnum>::SIZE];
+}
+
 #[cfg(test)]
 mod tests {
     use plain_enum::*;
@@ -375,6 +389,13 @@ mod tests {
         let mapbn = bool::map_from_fn(|b| b as usize);
         assert_eq!(mapbn[false], 0);
         assert_eq!(mapbn[true], 1);
+    }
+
+    #[test]
+    fn test_unit() {
+        let mapbn = <()>::map_from_fn(|()| 42);
+        assert_eq!(mapbn[()], 42);
+        assert_eq!(<()>::SIZE, 1);
     }
 
     #[test]
