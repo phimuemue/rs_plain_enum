@@ -54,7 +54,11 @@ mod plain_enum {
         fn index(a: &Self, e: usize) -> &T;
         fn index_mut(a: &mut Self, e: usize) -> &mut T;
         fn iter(a: &Self) -> slice::Iter<T>;
+        type TupleType;
+        fn from_tuple(tpl: Self::TupleType) -> Self;
+        // TODO into_tuple
     }
+    macro_rules! ignore_first{($a0: tt, $a1: tt) => {$a1}}
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
             fn array_from_fn<F>(mut func: F) -> Self
@@ -70,6 +74,10 @@ mod plain_enum {
             }
             fn iter(a: &Self) -> slice::Iter<T> {
                 a.iter()
+            }
+            type TupleType = ($(ignore_first!($i, T),)*);
+            fn from_tuple(tpl: Self::TupleType) -> Self {
+                [$(tpl.$i,)*]
             }
         }
     }}
@@ -160,6 +168,12 @@ mod plain_enum {
         {
             EnumMap::from_raw(a)
         }
+        /// Creates a enum map from an appropriately sized tuple.
+        fn map_from_tuple<V>(tpl: <<Self as TInternalEnumMapType<V>>::InternalEnumMapType as TArrayFromFn<V>>::TupleType) -> EnumMap<Self, V>
+            where Self: TInternalEnumMapType<V>, // TODORUST
+        {
+            EnumMap::from_tuple(tpl)
+        }
     }
 
     /// Trait used to associated enum with EnumMap.
@@ -187,6 +201,9 @@ mod plain_enum {
                 phantome: std::marker::PhantomData{},
                 a,
             }
+        }
+        pub fn from_tuple(tpl: <E::InternalEnumMapType as TArrayFromFn<V>>::TupleType) -> Self {
+            Self::from_raw(E::InternalEnumMapType::from_tuple(tpl))
         }
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<V> {
@@ -409,6 +426,14 @@ mod tests {
                 assert_eq!(e1.wrapped_difference_usize(e2), e1.wrapped_difference(e2).0.to_usize());
             }
         }
+    }
+
+    #[test]
+    fn test_from_tuple() {
+        let enummap = ETest::map_from_tuple((1,2,3));
+        assert_eq!(enummap[ETest::E1], 1);
+        assert_eq!(enummap[ETest::E2], 2);
+        assert_eq!(enummap[ETest::E3], 3);
     }
 }
 
