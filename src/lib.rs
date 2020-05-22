@@ -223,6 +223,14 @@ mod plain_enum {
         pub fn into_raw(self) -> E::InternalEnumMapType {
             self.a
         }
+        /// Exposes a reference to the underlying array.
+        pub fn as_raw(&self) -> &E::InternalEnumMapType {
+            &self.a
+        }
+        /// Exposes a mutable reference to the underlying array.
+        pub fn as_raw_mut(&mut self) -> &mut E::InternalEnumMapType {
+            &mut self.a
+        }
     }
     impl<E, V> Index<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V>,
