@@ -212,9 +212,8 @@ mod plain_enum {
     /// Needed because of https://github.com/rust-lang/rust/issues/46969.
     /// TODO Rust: Once this is solved, use array directly within EnumMap.
     pub trait TInternalEnumMapType<V, W> : TPlainEnum {
-        type InternalEnumMapType : TArrayFromFn<V>;
+        type InternalEnumMapType : TArrayFromFn<V> + TArrayMapInto<V, W>;
         type MappedType : TArrayFromFn<W>;
-        fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType;
     }
 
     #[allow(dead_code)]
@@ -257,13 +256,13 @@ mod plain_enum {
         pub fn map_into<FnMap, W>(self, fn_map: FnMap) -> EnumMap<E, W>
             where FnMap: Fn(V) -> W,
                   E: TInternalEnumMapType<V, V>,
-                  <E as TInternalEnumMapType<V, V>>::InternalEnumMapType: Into<<E as TInternalEnumMapType<V, W>>::InternalEnumMapType>,
+                  <E as TInternalEnumMapType<V, V>>::InternalEnumMapType: TArrayMapInto<V, W>,
                   E: TInternalEnumMapType<V, W>,
-                  <E as TInternalEnumMapType<V, W>>::MappedType: Into<<E as TInternalEnumMapType<W, W>>::InternalEnumMapType>,
+                  <<E as TInternalEnumMapType<V, V>>::InternalEnumMapType as TArrayMapInto<V, W>>::MappedType: Into<<E as TInternalEnumMapType<W, W>>::InternalEnumMapType>,
                   E: TInternalEnumMapType<W, W>,
                   E: TPlainEnum,
         {
-            EnumMap::<E, W>::from_raw(<E as TInternalEnumMapType<V, W>>::map_into(self.a.into(), fn_map).into())
+            EnumMap::<E, W>::from_raw(self.a.map_into2(fn_map).into())
         }
         /// Consumes an `EnumMap` and returns the underlying array.
         pub fn into_raw(self) -> E::InternalEnumMapType {
@@ -319,10 +318,6 @@ mod plain_enum {
         impl<V, W> TInternalEnumMapType<V, W> for $enumname {
             type InternalEnumMapType = [V; $enumname::SIZE];
             type MappedType = [W; $enumname::SIZE];
-            fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType {
-                use plain_enum::TArrayMapInto;
-                a.map_into2(f)
-            }
         }
     }}
 
@@ -387,9 +382,6 @@ impl TPlainEnum for () {
 impl<V, W> TInternalEnumMapType<V, W> for () {
     type InternalEnumMapType = [V; <() as TPlainEnum>::SIZE];
     type MappedType = [W; <() as TPlainEnum>::SIZE];
-    fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType {
-        a.map_into2(f)
-    }
 }
 
 #[cfg(test)]
