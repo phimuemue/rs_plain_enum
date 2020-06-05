@@ -332,7 +332,7 @@ mod plain_enum {
             $($enumvals: ident,)*
         } ) => {
             mod $modname {
-                use crate::plain_enum::*;
+                use plain_enum::*;
                 #[repr(usize)]
                 #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
                 pub enum $enumname {
@@ -394,7 +394,7 @@ impl<V, W> TInternalEnumMapType<V, W> for () {
 
 #[cfg(test)]
 mod tests {
-    use crate::plain_enum::*;
+    use plain_enum::*;
     plain_enum_mod!{test_module, ETest {
         E1, E2, E3,
     }}
