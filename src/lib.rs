@@ -100,6 +100,38 @@ mod plain_enum {
             120, 121, 122, 123, 124, 125, 126, 127, 128,
         ]
     }
+    pub trait TArrayMapInto<V, W> {
+        type MappedType;
+        fn map_into2(self, f: impl FnMut(V)->W) -> Self::MappedType;
+    }
+    macro_rules! impl_array_map_into{($($val: tt,)*) => {
+        impl<V, W> TArrayMapInto<V, W> for [V; enum_seq_len!($($val,)*)] {
+            type MappedType = [W; enum_seq_len!($($val,)*)];
+            fn map_into2(self, mut f: impl FnMut(V)->W) -> Self::MappedType {
+                let [ $($val,)* ] = self;
+                [$(f($val),)*]
+            }
+        }
+    }}
+    for_each_prefix!{
+        impl_array_map_into,
+        [t0,],
+        [
+            t1, t2, t3, t4, t5, t6, t7, t8, t9,
+            t10, t11, t12, t13, t14, t15, t16, t17, t18, t19,
+            t20, t21, t22, t23, t24, t25, t26, t27, t28, t29,
+            t30, t31, t32, t33, t34, t35, t36, t37, t38, t39,
+            t40, t41, t42, t43, t44, t45, t46, t47, t48, t49,
+            t50, t51, t52, t53, t54, t55, t56, t57, t58, t59,
+            t60, t61, t62, t63, t64, t65, t66, t67, t68, t69,
+            t70, t71, t72, t73, t74, t75, t76, t77, t78, t79,
+            t80, t81, t82, t83, t84, t85, t86, t87, t88, t89,
+            t90, t91, t92, t93, t94, t95, t96, t97, t98, t99,
+            t100, t101, t102, t103, t104, t105, t106, t107, t108, t109,
+            t110, t111, t112, t113, t114, t115, t116, t117, t118, t119,
+            t120, t121, t122, t123, t124, t125, t126, t127, t128,
+        ]
+    }
 
     use std;
     use std::iter;
@@ -181,6 +213,8 @@ mod plain_enum {
     /// TODO Rust: Once this is solved, use array directly within EnumMap.
     pub trait TInternalEnumMapType<V, W> : TPlainEnum {
         type InternalEnumMapType : TArrayFromFn<V>;
+        type MappedType : TArrayFromFn<W>;
+        fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType;
     }
 
     #[allow(dead_code)]
@@ -218,6 +252,18 @@ mod plain_enum {
             E::map_from_fn(|e|
                 fn_map(&self[e])
             )
+        }
+        /// Moves and maps the values in a map. (Similar to `Iterator::map`.)
+        pub fn map_into<FnMap, W>(self, fn_map: FnMap) -> EnumMap<E, W>
+            where FnMap: Fn(V) -> W,
+                  E: TInternalEnumMapType<V, V>,
+                  <E as TInternalEnumMapType<V, V>>::InternalEnumMapType: Into<<E as TInternalEnumMapType<V, W>>::InternalEnumMapType>,
+                  E: TInternalEnumMapType<V, W>,
+                  <E as TInternalEnumMapType<V, W>>::MappedType: Into<<E as TInternalEnumMapType<W, W>>::InternalEnumMapType>,
+                  E: TInternalEnumMapType<W, W>,
+                  E: TPlainEnum,
+        {
+            EnumMap::<E, W>::from_raw(<E as TInternalEnumMapType<V, W>>::map_into(self.a.into(), fn_map).into())
         }
         /// Consumes an `EnumMap` and returns the underlying array.
         pub fn into_raw(self) -> E::InternalEnumMapType {
@@ -270,8 +316,13 @@ mod plain_enum {
                 self as usize
             }
         }
-        impl<V> TInternalEnumMapType<V, V> for $enumname {
+        impl<V, W> TInternalEnumMapType<V, W> for $enumname {
             type InternalEnumMapType = [V; $enumname::SIZE];
+            type MappedType = [W; $enumname::SIZE];
+            fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType {
+                use plain_enum::TArrayMapInto;
+                a.map_into2(f)
+            }
         }
     }}
 
@@ -281,7 +332,7 @@ mod plain_enum {
             $($enumvals: ident,)*
         } ) => {
             mod $modname {
-                use plain_enum::*;
+                use crate::plain_enum::*;
                 #[repr(usize)]
                 #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
                 pub enum $enumname {
@@ -312,6 +363,7 @@ mod plain_enum {
 pub use plain_enum::TPlainEnum;
 pub use plain_enum::EnumMap;
 pub use plain_enum::TInternalEnumMapType;
+pub use plain_enum::TArrayMapInto;
 
 internal_impl_plainenum!(
     bool,
@@ -334,11 +386,15 @@ impl TPlainEnum for () {
 }
 impl<V, W> TInternalEnumMapType<V, W> for () {
     type InternalEnumMapType = [V; <() as TPlainEnum>::SIZE];
+    type MappedType = [W; <() as TPlainEnum>::SIZE];
+    fn map_into(a: Self::InternalEnumMapType, f: impl FnMut(V)->W) -> Self::MappedType {
+        a.map_into2(f)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use plain_enum::*;
+    use crate::plain_enum::*;
     plain_enum_mod!{test_module, ETest {
         E1, E2, E3,
     }}
@@ -407,6 +463,13 @@ mod tests {
         for v in map_test_to_usize.map(|n| Some(n*n)).iter() {
             assert!(v.is_some());
         }
+    }
+
+    #[test]
+    fn test_map_into() {
+        struct NonCopy;
+        let map_test_to_usize = ETest::map_from_fn(|_| NonCopy);
+        let _map2 : EnumMap<_, (NonCopy, usize)> =  map_test_to_usize.map_into(|noncopy| (noncopy, 0));
     }
 
     #[test]
