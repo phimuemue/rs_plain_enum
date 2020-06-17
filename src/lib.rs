@@ -225,6 +225,12 @@ mod plain_enum {
         a: E::InternalEnumMapType,
     }
 
+    impl<V: Default, E: TPlainEnum + TInternalEnumMapType<V, V>> Default for EnumMap<E, V> {
+        fn default() -> Self {
+            E::map_from_fn(|_| Default::default())
+        }
+    }
+
     impl<E, V> EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V, V>,
     {
@@ -489,6 +495,11 @@ mod tests {
                 assert_eq!(e1.wrapped_difference_usize(e2), e1.wrapped_difference(e2).0.to_usize());
             }
         }
+    }
+
+    #[test]
+    fn test_default() {
+        let _enummap : EnumMap<ETest, usize> = Default::default();
     }
 
     #[test]
