@@ -54,6 +54,7 @@ mod plain_enum {
         fn index(a: &Self, e: usize) -> &T;
         fn index_mut(a: &mut Self, e: usize) -> &mut T;
         fn iter(a: &Self) -> slice::Iter<T>;
+        fn iter_mut(a: &mut Self) -> slice::IterMut<T>;
         type TupleType;
         fn from_tuple(tpl: Self::TupleType) -> Self;
         // TODO into_tuple
@@ -74,6 +75,9 @@ mod plain_enum {
             }
             fn iter(a: &Self) -> slice::Iter<T> {
                 a.iter()
+            }
+            fn iter_mut(a: &mut Self) -> slice::IterMut<T> {
+                a.iter_mut()
             }
             type TupleType = ($(ignore_first!($i, T),)*);
             fn from_tuple(tpl: Self::TupleType) -> Self {
@@ -247,6 +251,10 @@ mod plain_enum {
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<V> {
             TArrayFromFn::iter(&self.a)
+        }
+        /// Returns an iterator over the mutable values of the EnumMap. (Similar to an iterator over a slice.)
+        pub fn iter_mut(&mut self) -> slice::IterMut<V> {
+            TArrayFromFn::iter_mut(&mut self.a)
         }
         /// Maps the values in a map. (Similar to `Iterator::map`.)
         pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
