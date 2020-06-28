@@ -340,13 +340,14 @@ mod plain_enum {
         ($modname: ident, derive($($derives:ident, )*), map_derive($($mapderives:ident, )*), $enumname: ident {
             $($enumvals: ident,)*
         } ) => {
+            #[repr(usize)]
+            #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
+            pub enum $enumname {
+                $(#[allow(dead_code)] $enumvals,)*
+            }
             mod $modname {
                 use plain_enum::*;
-                #[repr(usize)]
-                #[derive(PartialEq, Eq, Debug, Copy, Clone, PartialOrd, Ord, $($derives,)*)]
-                pub enum $enumname {
-                    $(#[allow(dead_code)] $enumvals,)*
-                }
+                use super::$enumname;
 
                 const SIZE : usize = enum_seq_len!($($enumvals,)*);
                 internal_impl_plainenum!(
@@ -359,7 +360,6 @@ mod plain_enum {
                     },
                 );
             }
-            pub use self::$modname::$enumname;
         };
         ($modname: ident, $enumname: ident {
             $($enumvals: ident,)*
