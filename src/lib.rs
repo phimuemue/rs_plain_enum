@@ -51,8 +51,8 @@ mod plain_enum {
     pub trait TArrayFromFn<T> {
         fn array_from_fn<F>(func: F) -> Self
             where F: FnMut(usize) -> T;
-        fn index(a: &Self, e: usize) -> &T;
-        fn index_mut(a: &mut Self, e: usize) -> &mut T;
+        unsafe fn index(a: &Self, e: usize) -> &T;
+        unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T;
         fn iter(a: &Self) -> slice::Iter<T>;
         fn iter_mut(a: &mut Self) -> slice::IterMut<T>;
         type TupleType;
@@ -67,11 +67,13 @@ mod plain_enum {
             {
                 [$(func($i),)*]
             }
-            fn index(a: &Self, e: usize) -> &T {
-                &a[e]
+            #[inline(always)]
+            unsafe fn index(a: &Self, e: usize) -> &T {
+                a.get_unchecked(e)
             }
-            fn index_mut(a: &mut Self, e: usize) -> &mut T {
-                &mut a[e]
+            #[inline(always)]
+            unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T {
+                a.get_unchecked_mut(e)
             }
             fn iter(a: &Self) -> slice::Iter<T> {
                 a.iter()
@@ -296,14 +298,14 @@ mod plain_enum {
     {
         type Output = V;
         fn index(&self, e: E) -> &V {
-            TArrayFromFn::index(&self.a, e.to_usize())
+            unsafe { TArrayFromFn::index(&self.a, e.to_usize()) } // array size is E::SIZE
         }
     }
     impl<E, V> IndexMut<E> for EnumMap<E, V>
         where E: TPlainEnum + TInternalEnumMapType<V, V>,
     {
         fn index_mut(&mut self, e: E) -> &mut Self::Output {
-            TArrayFromFn::index_mut(&mut self.a, e.to_usize())
+            unsafe { TArrayFromFn::index_mut(&mut self.a, e.to_usize()) } // array size is E::SIZE
         }
     }
 
