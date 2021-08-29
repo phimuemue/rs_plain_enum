@@ -1,6 +1,6 @@
 [package]
 name = "plain_enum"
-version = "0.9.11"
+version = "0.9.12"
 authors = ["philipp <philipp>"]
 description = "Mimicing Java's enum::values() and EnumMap"
 license = "MIT/Apache-2.0"
