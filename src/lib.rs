@@ -400,6 +400,32 @@ impl<V, W> TInternalEnumMapType<V, W> for () {
     type MappedType = [W; <() as TPlainEnum>::SIZE];
 }
 
+impl TPlainEnum for std::cmp::Ordering {
+    const SIZE : usize = 3;
+    // TODO: can we do better here by e.g. exploiting that Less==-1, Equal==0, Greater==1? Not sure if this is guaranteed.
+    unsafe fn from_usize(u: usize) -> Self {
+        match u {
+            0 => std::cmp::Ordering::Less,
+            1 => std::cmp::Ordering::Equal,
+            u => {
+                debug_assert_eq!(u, 2);
+                std::cmp::Ordering::Greater
+            },
+        }
+    }
+    fn to_usize(self) -> usize {
+        match self {
+            std::cmp::Ordering::Less => 0,
+            std::cmp::Ordering::Equal => 1,
+            std::cmp::Ordering::Greater => 2,
+        }
+    }
+}
+impl<V, W> TInternalEnumMapType<V, W> for std::cmp::Ordering {
+    type InternalEnumMapType = [V; <std::cmp::Ordering as TPlainEnum>::SIZE];
+    type MappedType = [W; <std::cmp::Ordering as TPlainEnum>::SIZE];
+}
+
 #[cfg(test)]
 mod tests {
     use plain_enum::*;
