@@ -321,7 +321,7 @@ mod plain_enum {
 
 
     #[macro_export]
-    macro_rules! internal_impl_plainenum {($enumname: ident, $enumsize: expr, $from_usize: expr,) => {
+    macro_rules! internal_impl_plainenum {($enumname: ty, $enumsize: expr, $from_usize: expr,) => {
         impl TPlainEnum for $enumname {
             const SIZE : usize = $enumsize;
             unsafe fn from_usize(u: usize) -> Self {
@@ -332,8 +332,8 @@ mod plain_enum {
             }
         }
         impl<V, W> TInternalEnumMapType<V, W> for $enumname {
-            type InternalEnumMapType = [V; $enumname::SIZE];
-            type MappedType = [W; $enumname::SIZE];
+            type InternalEnumMapType = [V; <$enumname>::SIZE];
+            type MappedType = [W; <$enumname>::SIZE];
         }
     }}
 
