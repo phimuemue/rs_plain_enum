@@ -223,7 +223,7 @@ mod plain_enum {
     }
 
     #[allow(dead_code)]
-    #[derive(Eq, PartialEq, Hash, Copy, Debug)]
+    #[derive(Eq, PartialEq, Hash, Copy)]
     pub struct EnumMap<E: TPlainEnum, V>
         where E: TPlainEnum + TInternalEnumMapType<V, V>,
     {
@@ -240,6 +240,22 @@ mod plain_enum {
             E::map_from_fn(|e| self[e].clone()) // TODO can this be improved?
         }
     }
+
+    impl<E, V> std::fmt::Debug for EnumMap<E, V> // TODO can this be more elegant?
+        where
+            E: TPlainEnum + TInternalEnumMapType<V, V> + std::fmt::Debug,
+            V: std::fmt::Debug,
+    {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f
+                .debug_map()
+                .entries(E::values().map(|e| {
+                    let i = e.to_usize();
+                    let e2 = unsafe { E::from_usize(i) }; // avoids requiring Clone
+                    let e3 = unsafe { E::from_usize(i) }; // avoids requiring Clone
+                    (e2, &self[e3])
+                }))
+                .finish()
         }
     }
 
