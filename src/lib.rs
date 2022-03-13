@@ -223,12 +223,24 @@ mod plain_enum {
     }
 
     #[allow(dead_code)]
-    #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+    #[derive(Eq, PartialEq, Hash, Copy, Debug)]
     pub struct EnumMap<E: TPlainEnum, V>
         where E: TPlainEnum + TInternalEnumMapType<V, V>,
     {
         phantome: std::marker::PhantomData<E>,
         a: E::InternalEnumMapType,
+    }
+
+    impl<E, V> Clone for EnumMap<E, V>
+        where
+            E: TPlainEnum + TInternalEnumMapType<V, V>,
+            V: Clone,
+    {
+        fn clone(&self) -> Self {
+            E::map_from_fn(|e| self[e].clone()) // TODO can this be improved?
+        }
+    }
+        }
     }
 
     impl<V: Default, E: TPlainEnum + TInternalEnumMapType<V, V>> Default for EnumMap<E, V> {
