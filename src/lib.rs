@@ -106,14 +106,14 @@ mod plain_enum {
             120, 121, 122, 123, 124, 125, 126, 127, 128,
         ]
     }
-    pub trait TArrayMapInto<V, W> {
-        type MappedType;
-        fn map_into2(self, f: impl FnMut(V)->W) -> Self::MappedType;
+    pub trait TArrayMapInto<V> {
+        type MappedType<W>;
+        fn map_into2<W>(self, f: impl FnMut(V)->W) -> Self::MappedType::<W>;
     }
     macro_rules! impl_array_map_into{($($val: tt,)*) => {
-        impl<V, W> TArrayMapInto<V, W> for [V; enum_seq_len!($($val,)*)] {
-            type MappedType = [W; enum_seq_len!($($val,)*)];
-            fn map_into2(self, mut f: impl FnMut(V)->W) -> Self::MappedType {
+        impl<V> TArrayMapInto<V> for [V; enum_seq_len!($($val,)*)] {
+            type MappedType<W> = [W; enum_seq_len!($($val,)*)];
+            fn map_into2<W>(self, mut f: impl FnMut(V)->W) -> Self::MappedType::<W> {
                 let [ $($val,)* ] = self;
                 [$(f($val),)*]
             }
@@ -152,6 +152,8 @@ mod plain_enum {
     pub trait TPlainEnum : Sized {
         /// Arity, i.e. the smallest `usize` not representable by the enum.
         const SIZE : usize;
+        /// Internal type of enum maps.
+        type EnumMapArray<T> : TArrayFromFn<T> + TArrayMapInto<T>;
         /// Converts `u` to the associated enum value. Assumes that `u` is a valid value for the enum, and is, thus, unsafe.
         unsafe fn from_usize(u: usize) -> Self;
         /// Converts the enum to its numerical representation.
@@ -195,45 +197,34 @@ mod plain_enum {
         /// The map will contain the results of applying `func` to each enum value.
         fn map_from_fn<F, T>(mut func: F) -> EnumMap<Self, T>
             where F: FnMut(Self) -> T,
-                  Self: TInternalEnumMapType<T, T>,
         {
             EnumMap::from_raw(TArrayFromFn::array_from_fn(|i| func(unsafe{Self::from_usize(i)})))
         }
         /// Creates a enum map from a raw array.
-        fn map_from_raw<V>(a: <Self as TInternalEnumMapType<V, V>>::InternalEnumMapType) -> EnumMap<Self, V>
+        fn map_from_raw<V>(a: Self::EnumMapArray::<V>) -> EnumMap<Self, V>
             where
-                Self: TInternalEnumMapType<V, V>, // TODORUST
         {
             EnumMap::from_raw(a)
         }
         /// Creates a enum map from an appropriately sized tuple.
-        fn map_from_tuple<V>(tpl: <<Self as TInternalEnumMapType<V, V>>::InternalEnumMapType as TArrayFromFn<V>>::TupleType) -> EnumMap<Self, V>
-            where Self: TInternalEnumMapType<V, V>, // TODORUST
+        fn map_from_tuple<V>(tpl: <Self::EnumMapArray::<V> as TArrayFromFn<V>>::TupleType) -> EnumMap<Self, V>
         {
             EnumMap::from_tuple(tpl)
         }
     }
 
-    /// Trait used to associated enum with EnumMap.
-    /// Needed because of https://github.com/rust-lang/rust/issues/46969.
-    /// TODO Rust: Once this is solved, use array directly within EnumMap.
-    pub trait TInternalEnumMapType<V, W> : TPlainEnum {
-        type InternalEnumMapType : TArrayFromFn<V> + TArrayMapInto<V, W>;
-        type MappedType : TArrayFromFn<W>;
-    }
-
     #[allow(dead_code)]
     #[derive(Eq, PartialEq, Hash, Copy)]
     pub struct EnumMap<E: TPlainEnum, V>
-        where E: TPlainEnum + TInternalEnumMapType<V, V>,
+        where E: TPlainEnum,
     {
         phantome: std::marker::PhantomData<E>,
-        a: E::InternalEnumMapType,
+        a: E::EnumMapArray<V>,
     }
 
     impl<E, V> Clone for EnumMap<E, V>
         where
-            E: TPlainEnum + TInternalEnumMapType<V, V>,
+            E: TPlainEnum,
             V: Clone,
     {
         fn clone(&self) -> Self {
@@ -243,7 +234,7 @@ mod plain_enum {
 
     impl<E, V> std::fmt::Debug for EnumMap<E, V> // TODO can this be more elegant?
         where
-            E: TPlainEnum + TInternalEnumMapType<V, V> + std::fmt::Debug,
+            E: TPlainEnum + std::fmt::Debug,
             V: std::fmt::Debug,
     {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -259,24 +250,24 @@ mod plain_enum {
         }
     }
 
-    impl<V: Default, E: TPlainEnum + TInternalEnumMapType<V, V>> Default for EnumMap<E, V> {
+    impl<V: Default, E: TPlainEnum> Default for EnumMap<E, V> {
         fn default() -> Self {
             E::map_from_fn(|_| Default::default())
         }
     }
 
     impl<E, V> EnumMap<E, V>
-        where E: TPlainEnum + TInternalEnumMapType<V, V>,
+        where E: TPlainEnum,
     {
         /// Constructs an `EnumMap` from the underlying array type.
-        pub fn from_raw(a: E::InternalEnumMapType) -> Self {
+        pub fn from_raw(a: E::EnumMapArray<V>) -> Self {
             EnumMap{
                 phantome: std::marker::PhantomData{},
                 a,
             }
         }
-        pub fn from_tuple(tpl: <E::InternalEnumMapType as TArrayFromFn<V>>::TupleType) -> Self {
-            Self::from_raw(E::InternalEnumMapType::from_tuple(tpl))
+        pub fn from_tuple(tpl: <E::EnumMapArray<V> as TArrayFromFn<V>>::TupleType) -> Self {
+            Self::from_raw(E::EnumMapArray::<V>::from_tuple(tpl))
         }
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<V> {
@@ -289,7 +280,6 @@ mod plain_enum {
         /// Maps the values in a map. (Similar to `Iterator::map`.)
         pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
             where FnMap: Fn(&V) -> W,
-                  E: TInternalEnumMapType<W, W>,
                   E: TPlainEnum,
         {
             E::map_from_fn(|e|
@@ -299,30 +289,26 @@ mod plain_enum {
         /// Moves and maps the values in a map. (Similar to `Iterator::map`.)
         pub fn map_into<FnMap, W>(self, fn_map: FnMap) -> EnumMap<E, W>
             where FnMap: Fn(V) -> W,
-                  E: TInternalEnumMapType<V, V>,
-                  <E as TInternalEnumMapType<V, V>>::InternalEnumMapType: TArrayMapInto<V, W>,
-                  E: TInternalEnumMapType<V, W>,
-                  <<E as TInternalEnumMapType<V, V>>::InternalEnumMapType as TArrayMapInto<V, W>>::MappedType: Into<<E as TInternalEnumMapType<W, W>>::InternalEnumMapType>,
-                  E: TInternalEnumMapType<W, W>,
                   E: TPlainEnum,
+                  <<E as TPlainEnum>::EnumMapArray<V> as TArrayMapInto<V>>::MappedType::<W>: Into<E::EnumMapArray<W>>
         {
             EnumMap::<E, W>::from_raw(self.a.map_into2(fn_map).into())
         }
         /// Consumes an `EnumMap` and returns the underlying array.
-        pub fn into_raw(self) -> E::InternalEnumMapType {
+        pub fn into_raw(self) -> E::EnumMapArray::<V> {
             self.a
         }
         /// Exposes a reference to the underlying array.
-        pub fn as_raw(&self) -> &E::InternalEnumMapType {
+        pub fn as_raw(&self) -> &E::EnumMapArray::<V> {
             &self.a
         }
         /// Exposes a mutable reference to the underlying array.
-        pub fn as_raw_mut(&mut self) -> &mut E::InternalEnumMapType {
+        pub fn as_raw_mut(&mut self) -> &mut E::EnumMapArray::<V> {
             &mut self.a
         }
     }
     impl<E, V> Index<E> for EnumMap<E, V>
-        where E: TPlainEnum + TInternalEnumMapType<V, V>,
+        where E: TPlainEnum,
     {
         type Output = V;
         fn index(&self, e: E) -> &V {
@@ -330,7 +316,7 @@ mod plain_enum {
         }
     }
     impl<E, V> IndexMut<E> for EnumMap<E, V>
-        where E: TPlainEnum + TInternalEnumMapType<V, V>,
+        where E: TPlainEnum,
     {
         fn index_mut(&mut self, e: E) -> &mut Self::Output {
             unsafe { TArrayFromFn::index_mut(&mut self.a, e.to_usize()) } // array size is E::SIZE
@@ -352,16 +338,13 @@ mod plain_enum {
     macro_rules! internal_impl_plainenum {($enumname: ty, $enumsize: expr, $from_usize: expr,) => {
         impl TPlainEnum for $enumname {
             const SIZE : usize = $enumsize;
+            type EnumMapArray<T> = [T; $enumsize];
             unsafe fn from_usize(u: usize) -> Self {
                 $from_usize(u)
             }
             fn to_usize(self) -> usize {
                 self as usize
             }
-        }
-        impl<V, W> TInternalEnumMapType<V, W> for $enumname {
-            type InternalEnumMapType = [V; <$enumname>::SIZE];
-            type MappedType = [W; <$enumname>::SIZE];
         }
     }}
 
@@ -401,7 +384,6 @@ mod plain_enum {
 
 pub use plain_enum::TPlainEnum;
 pub use plain_enum::EnumMap;
-pub use plain_enum::TInternalEnumMapType;
 pub use plain_enum::TArrayMapInto;
 
 internal_impl_plainenum!(
@@ -415,6 +397,7 @@ internal_impl_plainenum!(
 
 impl TPlainEnum for () {
     const SIZE : usize = 1;
+    type EnumMapArray<T> = [T; 1];
     unsafe fn from_usize(u: usize) -> Self {
         debug_assert_eq!(0, u);
         ()
@@ -423,13 +406,10 @@ impl TPlainEnum for () {
         0
     }
 }
-impl<V, W> TInternalEnumMapType<V, W> for () {
-    type InternalEnumMapType = [V; <() as TPlainEnum>::SIZE];
-    type MappedType = [W; <() as TPlainEnum>::SIZE];
-}
 
 impl TPlainEnum for std::cmp::Ordering {
     const SIZE : usize = 3;
+    type EnumMapArray<T> = [T; 3];
     // TODO: can we do better here by e.g. exploiting that Less==-1, Equal==0, Greater==1? Not sure if this is guaranteed.
     unsafe fn from_usize(u: usize) -> Self {
         match u {
@@ -448,10 +428,6 @@ impl TPlainEnum for std::cmp::Ordering {
             std::cmp::Ordering::Greater => 2,
         }
     }
-}
-impl<V, W> TInternalEnumMapType<V, W> for std::cmp::Ordering {
-    type InternalEnumMapType = [V; <std::cmp::Ordering as TPlainEnum>::SIZE];
-    type MappedType = [W; <std::cmp::Ordering as TPlainEnum>::SIZE];
 }
 
 #[cfg(test)]
