@@ -400,7 +400,6 @@ impl PlainEnum for () {
     type EnumMapArray<T> = [T; 1];
     unsafe fn from_usize(u: usize) -> Self {
         debug_assert_eq!(0, u);
-        ()
     }
     fn to_usize(self) -> usize {
         0
