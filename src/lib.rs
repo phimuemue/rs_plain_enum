@@ -429,6 +429,9 @@ unsafe impl PlainEnum for std::cmp::Ordering {
     }
 }
 
+// TODO support Option, Result, etc.
+// TODO support nested enums
+
 #[cfg(test)]
 mod tests {
     use plain_enum::*;
