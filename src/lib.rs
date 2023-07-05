@@ -149,7 +149,7 @@ mod plain_enum {
 
     /// This trait is implemented by enums declared via the `plain_enum_mod` macro.
     /// Do not implement it yourself, but use this macro.
-    pub trait PlainEnum : Sized {
+    pub unsafe trait PlainEnum : Sized {
         /// Arity, i.e. the smallest `usize` not representable by the enum.
         const SIZE : usize;
         /// Internal type of enum maps.
@@ -336,7 +336,7 @@ mod plain_enum {
 
     #[macro_export]
     macro_rules! internal_impl_plainenum {($enumname: ty, $enumsize: expr, $from_usize: expr,) => {
-        impl PlainEnum for $enumname {
+        unsafe impl PlainEnum for $enumname {
             const SIZE : usize = $enumsize;
             type EnumMapArray<T> = [T; $enumsize];
             unsafe fn from_usize(u: usize) -> Self {
@@ -395,7 +395,7 @@ internal_impl_plainenum!(
     },
 );
 
-impl PlainEnum for () {
+unsafe impl PlainEnum for () {
     const SIZE : usize = 1;
     type EnumMapArray<T> = [T; 1];
     unsafe fn from_usize(u: usize) -> Self {
@@ -406,7 +406,7 @@ impl PlainEnum for () {
     }
 }
 
-impl PlainEnum for std::cmp::Ordering {
+unsafe impl PlainEnum for std::cmp::Ordering {
     const SIZE : usize = 3;
     type EnumMapArray<T> = [T; 3];
     // TODO: can we do better here by e.g. exploiting that Less==-1, Equal==0, Greater==1? Not sure if this is guaranteed.
