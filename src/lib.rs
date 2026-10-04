@@ -50,17 +50,10 @@ mod plain_enum {
         };
     );
     pub trait TArrayFromFn<T> {
-        type TupleType;
-        fn from_tuple(tpl: Self::TupleType) -> Self;
-        // TODO into_tuple
     }
     macro_rules! ignore_first{($a0: tt, $a1: tt) => {$a1}}
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
-            type TupleType = ($(ignore_first!($i, T),)*);
-            fn from_tuple(tpl: Self::TupleType) -> Self {
-                [$(tpl.$i,)*]
-            }
         }
     }}
     for_each_prefix!{
@@ -186,11 +179,6 @@ mod plain_enum {
         {
             EnumMap::from_raw(a)
         }
-        /// Creates a enum map from an appropriately sized tuple.
-        fn map_from_tuple<V>(tpl: <Self::EnumMapArray::<V> as TArrayFromFn<V>>::TupleType) -> EnumMap<Self, V>
-        {
-            EnumMap::from_tuple(tpl)
-        }
     }
 
     #[allow(dead_code)]
@@ -245,9 +233,6 @@ mod plain_enum {
                 phantome: std::marker::PhantomData{},
                 a,
             }
-        }
-        pub fn from_tuple(tpl: <E::EnumMapArray<V> as TArrayFromFn<V>>::TupleType) -> Self {
-            Self::from_raw(E::EnumMapArray::<V>::from_tuple(tpl))
         }
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<'_, V> {
