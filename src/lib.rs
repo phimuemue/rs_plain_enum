@@ -40,40 +40,6 @@ macro_rules! enum_seq_len {
 
 #[macro_use]
 mod plain_enum {
-    macro_rules! for_each_prefix (
-        ($m:ident, [$($acc:tt,)*], []) => {
-            $m!($($acc,)*);
-        };
-        ($m:ident, [$($acc:tt,)*], [$arg0:tt, $($arg:tt,)*]) => {
-            $m!($($acc,)*);
-            for_each_prefix!($m, [$($acc,)* $arg0,], [$($arg,)*]);
-        };
-    );
-    pub trait TArrayFromFn<T> {
-    }
-    macro_rules! impl_array_from_fn{($($i: tt,)*) => {
-        impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
-        }
-    }}
-    for_each_prefix!{
-        impl_array_from_fn,
-        [0,],
-        [
-            1, 2, 3, 4, 5, 6, 7, 8, 9,
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-            20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-            30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-            40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-            50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
-            60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
-            70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-            80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
-            90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
-            100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
-            110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
-            120, 121, 122, 123, 124, 125, 126, 127, 128,
-        ]
-    }
     pub trait TArrayExt {
         type Item;
         fn from_fn(f: impl FnMut(usize)->Self::Item) -> Self;
@@ -125,7 +91,7 @@ mod plain_enum {
         /// Arity, i.e. the smallest `usize` not representable by the enum.
         const SIZE : usize;
         /// Internal type of enum maps.
-        type EnumMapArray<T> : TArrayFromFn<T> + TArrayExt<Item=T>;
+        type EnumMapArray<T> : TArrayExt<Item=T>;
         /// Converts `u` to the associated enum value. Assumes that `u` is a valid value for the enum, and is, thus, unsafe.
         unsafe fn from_usize(u: usize) -> Self;
         /// Converts the enum to its numerical representation.
@@ -509,8 +475,8 @@ mod tests {
     }
 
     #[test]
-    fn test_from_tuple() {
-        let enummap = ETest::map_from_tuple((1,2,3));
+    fn test_from_raw() {
+        let enummap = ETest::map_from_raw([1,2,3]);
         assert_eq!(enummap[ETest::E1], 1);
         assert_eq!(enummap[ETest::E2], 2);
         assert_eq!(enummap[ETest::E3], 3);
