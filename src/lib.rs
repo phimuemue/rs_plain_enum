@@ -53,8 +53,8 @@ mod plain_enum {
             where F: FnMut(usize) -> T;
         unsafe fn index(a: &Self, e: usize) -> &T;
         unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T;
-        fn iter(a: &Self) -> slice::Iter<T>;
-        fn iter_mut(a: &mut Self) -> slice::IterMut<T>;
+        fn iter(a: &Self) -> slice::Iter<'_, T>;
+        fn iter_mut(a: &mut Self) -> slice::IterMut<'_, T>;
         type TupleType;
         fn from_tuple(tpl: Self::TupleType) -> Self;
         // TODO into_tuple
@@ -75,10 +75,10 @@ mod plain_enum {
             unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T {
                 a.get_unchecked_mut(e)
             }
-            fn iter(a: &Self) -> slice::Iter<T> {
+            fn iter(a: &Self) -> slice::Iter<'_, T> {
                 a.iter()
             }
-            fn iter_mut(a: &mut Self) -> slice::IterMut<T> {
+            fn iter_mut(a: &mut Self) -> slice::IterMut<'_, T> {
                 a.iter_mut()
             }
             type TupleType = ($(ignore_first!($i, T),)*);
@@ -250,11 +250,11 @@ mod plain_enum {
             Self::from_raw(E::EnumMapArray::<V>::from_tuple(tpl))
         }
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
-        pub fn iter(&self) -> slice::Iter<V> {
+        pub fn iter(&self) -> slice::Iter<'_, V> {
             TArrayFromFn::iter(&self.a)
         }
         /// Returns an iterator over the mutable values of the EnumMap. (Similar to an iterator over a slice.)
-        pub fn iter_mut(&mut self) -> slice::IterMut<V> {
+        pub fn iter_mut(&mut self) -> slice::IterMut<'_, V> {
             TArrayFromFn::iter_mut(&mut self.a)
         }
         /// Maps the values in a map. (Similar to `Iterator::map`.)
