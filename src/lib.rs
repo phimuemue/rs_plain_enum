@@ -387,6 +387,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let map1 = ETest::map_from_fn(|e| e);
+        #[allow(clippy::clone_on_copy)]
         let map2 = map1.clone();
         assert_eq!(map1, map2);
     }
