@@ -50,10 +50,6 @@ mod plain_enum {
         };
     );
     pub trait TArrayFromFn<T> {
-        unsafe fn index(a: &Self, e: usize) -> &T;
-        unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T;
-        fn iter(a: &Self) -> slice::Iter<'_, T>;
-        fn iter_mut(a: &mut Self) -> slice::IterMut<'_, T>;
         type TupleType;
         fn from_tuple(tpl: Self::TupleType) -> Self;
         // TODO into_tuple
@@ -61,20 +57,6 @@ mod plain_enum {
     macro_rules! ignore_first{($a0: tt, $a1: tt) => {$a1}}
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
-            #[inline(always)]
-            unsafe fn index(a: &Self, e: usize) -> &T {
-                a.get_unchecked(e)
-            }
-            #[inline(always)]
-            unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T {
-                a.get_unchecked_mut(e)
-            }
-            fn iter(a: &Self) -> slice::Iter<'_, T> {
-                a.iter()
-            }
-            fn iter_mut(a: &mut Self) -> slice::IterMut<'_, T> {
-                a.iter_mut()
-            }
             type TupleType = ($(ignore_first!($i, T),)*);
             fn from_tuple(tpl: Self::TupleType) -> Self {
                 [$(tpl.$i,)*]
@@ -105,6 +87,11 @@ mod plain_enum {
         fn from_fn(f: impl FnMut(usize)->Self::Item) -> Self;
         type MappedType<U>: TArrayExt<Item=U>;
         fn map<U>(self, f: impl FnMut(Self::Item)->U) -> Self::MappedType<U>;
+
+        unsafe fn index(&self, e: usize) -> &Self::Item;
+        unsafe fn index_mut(&mut self, e: usize) -> &mut Self::Item;
+        fn iter(&self) -> slice::Iter<'_, Self::Item>;
+        fn iter_mut(&mut self) -> slice::IterMut<'_, Self::Item>;
     }
     impl<T, const N: usize> TArrayExt for [T; N] {
         type Item = T;
@@ -114,6 +101,21 @@ mod plain_enum {
         type MappedType<U> = [U; N];
         fn map<U>(self, f: impl FnMut(Self::Item)->U) -> Self::MappedType<U> {
             self.map(f)
+        }
+
+        #[inline(always)]
+        unsafe fn index(&self, e: usize) -> &Self::Item {
+            self.get_unchecked(e)
+        }
+        #[inline(always)]
+        unsafe fn index_mut(&mut self, e: usize) -> &mut Self::Item {
+            self.get_unchecked_mut(e)
+        }
+        fn iter(&self) -> slice::Iter<'_, Self::Item> {
+            <[Self::Item]>::iter(self)
+        }
+        fn iter_mut(&mut self) -> slice::IterMut<'_, Self::Item> {
+            <[Self::Item]>::iter_mut(self)
         }
     }
 
@@ -249,11 +251,11 @@ mod plain_enum {
         }
         /// Returns an iterator over the values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter(&self) -> slice::Iter<'_, V> {
-            TArrayFromFn::iter(&self.a)
+            self.a.iter()
         }
         /// Returns an iterator over the mutable values of the EnumMap. (Similar to an iterator over a slice.)
         pub fn iter_mut(&mut self) -> slice::IterMut<'_, V> {
-            TArrayFromFn::iter_mut(&mut self.a)
+            self.a.iter_mut()
         }
         /// Maps the values in a map. (Similar to `Iterator::map`.)
         pub fn map<FnMap, W>(&self, fn_map: FnMap) -> EnumMap<E, W>
@@ -290,14 +292,14 @@ mod plain_enum {
     {
         type Output = V;
         fn index(&self, e: E) -> &V {
-            unsafe { TArrayFromFn::index(&self.a, e.to_usize()) } // array size is E::SIZE
+            unsafe { self.a.index(e.to_usize()) } // array size is E::SIZE
         }
     }
     impl<E, V> IndexMut<E> for EnumMap<E, V>
         where E: PlainEnum,
     {
         fn index_mut(&mut self, e: E) -> &mut Self::Output {
-            unsafe { TArrayFromFn::index_mut(&mut self.a, e.to_usize()) } // array size is E::SIZE
+            unsafe { self.a.index_mut(e.to_usize()) } // array size is E::SIZE
         }
     }
 
