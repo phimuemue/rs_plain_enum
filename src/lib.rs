@@ -50,8 +50,6 @@ mod plain_enum {
         };
     );
     pub trait TArrayFromFn<T> {
-        fn array_from_fn<F>(func: F) -> Self
-            where F: FnMut(usize) -> T;
         unsafe fn index(a: &Self, e: usize) -> &T;
         unsafe fn index_mut(a: &mut Self, e: usize) -> &mut T;
         fn iter(a: &Self) -> slice::Iter<'_, T>;
@@ -63,11 +61,6 @@ mod plain_enum {
     macro_rules! ignore_first{($a0: tt, $a1: tt) => {$a1}}
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
-            fn array_from_fn<F>(mut func: F) -> Self
-                where F: FnMut(usize) -> T
-            {
-                [$(func($i),)*]
-            }
             #[inline(always)]
             unsafe fn index(a: &Self, e: usize) -> &T {
                 a.get_unchecked(e)
@@ -109,11 +102,15 @@ mod plain_enum {
     }
     pub trait TArrayExt {
         type Item;
+        fn from_fn(f: impl FnMut(usize)->Self::Item) -> Self;
         type MappedType<U>: TArrayExt<Item=U>;
         fn map<U>(self, f: impl FnMut(Self::Item)->U) -> Self::MappedType<U>;
     }
     impl<T, const N: usize> TArrayExt for [T; N] {
         type Item = T;
+        fn from_fn(f: impl FnMut(usize)->Self::Item) -> Self {
+            std::array::from_fn(f)
+        }
         type MappedType<U> = [U; N];
         fn map<U>(self, f: impl FnMut(Self::Item)->U) -> Self::MappedType<U> {
             self.map(f)
@@ -179,7 +176,7 @@ mod plain_enum {
         fn map_from_fn<F, T>(mut func: F) -> EnumMap<Self, T>
             where F: FnMut(Self) -> T,
         {
-            EnumMap::from_raw(TArrayFromFn::array_from_fn(|i| func(unsafe{Self::from_usize(i)})))
+            EnumMap::from_raw(Self::EnumMapArray::<T>::from_fn(|i| func(unsafe{Self::from_usize(i)})))
         }
         /// Creates a enum map from a raw array.
         fn map_from_raw<V>(a: Self::EnumMapArray::<V>) -> EnumMap<Self, V>
