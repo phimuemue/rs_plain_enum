@@ -51,7 +51,6 @@ mod plain_enum {
     );
     pub trait TArrayFromFn<T> {
     }
-    macro_rules! ignore_first{($a0: tt, $a1: tt) => {$a1}}
     macro_rules! impl_array_from_fn{($($i: tt,)*) => {
         impl<T> TArrayFromFn<T> for [T; enum_seq_len!($($i,)*)] {
         }
