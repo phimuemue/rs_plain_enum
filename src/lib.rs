@@ -1,3 +1,4 @@
+#![allow(clippy::missing_safety_doc)] // TODO fix this
 //! This crate offers some tools to deal with static enums. It offers a way to declare a simple
 //! enum, which then offers e.g. `values()` which can be used to iterate over the values of the enum.
 //! In addition, it offers a type `EnumMap` which is an array-backed map from enum values to some type.
