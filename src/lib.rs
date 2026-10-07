@@ -64,11 +64,11 @@ mod plain_enum {
 
         #[inline(always)]
         unsafe fn index(&self, e: usize) -> &Self::Item {
-            self.get_unchecked(e)
+            unsafe { self.get_unchecked(e) }
         }
         #[inline(always)]
         unsafe fn index_mut(&mut self, e: usize) -> &mut Self::Item {
-            self.get_unchecked_mut(e)
+            unsafe { self.get_unchecked_mut(e) }
         }
         fn iter(&self) -> slice::Iter<'_, Self::Item> {
             <[Self::Item]>::iter(self)
@@ -299,7 +299,7 @@ mod plain_enum {
                     |u|{
                         use std::mem;
                         debug_assert!(Self::valid_usize(u));
-                        mem::transmute(u)
+                        unsafe { mem::transmute(u) }
                     },
                 );
             }
