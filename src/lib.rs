@@ -31,11 +31,12 @@
 //! Internally, the macro generates a simple enum whose numeric values start counting at 0.
 
 #![recursion_limit="256"] // my tests indicate that 139 would be enough but I do not know how if that is enough in foreign code, so I chose the limit suggested by rustc
+
 #[macro_export]
 macro_rules! enum_seq_len {
     () => (0);
-    ($($enumval_0: tt, $enumval_1: tt,)*) => (2*(enum_seq_len!($($enumval_0,)*)));
-    ($enumval: tt, $($enumval_0: tt, $enumval_1: tt,)*) => (1+2*(enum_seq_len!($($enumval_0,)*)));
+    ($($enumval_0: tt, $enumval_1: tt,)*) => (2*($crate::enum_seq_len!($($enumval_0,)*)));
+    ($enumval: tt, $($enumval_0: tt, $enumval_1: tt,)*) => (1+2*($crate::enum_seq_len!($($enumval_0,)*)));
 }
 
 #[macro_use]
@@ -266,7 +267,7 @@ mod plain_enum {
 
     #[macro_export]
     macro_rules! internal_impl_plainenum {($enumname: ty, $enumsize: expr, $from_usize: expr,) => {
-        unsafe impl PlainEnum for $enumname {
+        unsafe impl $crate::PlainEnum for $enumname {
             const SIZE : usize = $enumsize;
             type EnumMapArray<T> = [T; $enumsize];
             unsafe fn from_usize(u: usize) -> Self {
@@ -289,11 +290,10 @@ mod plain_enum {
                 $(#[allow(dead_code)] $enumvals,)*
             }
             mod $modname {
-                use plain_enum::*;
                 use super::$enumname;
 
-                const SIZE : usize = enum_seq_len!($($enumvals,)*);
-                internal_impl_plainenum!(
+                const SIZE : usize = $crate::enum_seq_len!($($enumvals,)*);
+                $crate::internal_impl_plainenum!(
                     $enumname,
                     SIZE,
                     |u|{
@@ -312,9 +312,9 @@ mod plain_enum {
     }
 }
 
-pub use plain_enum::PlainEnum;
-pub use plain_enum::EnumMap;
-pub use plain_enum::TArrayExt;
+pub use crate::plain_enum::PlainEnum;
+pub use crate::plain_enum::EnumMap;
+pub use crate::plain_enum::TArrayExt;
 
 internal_impl_plainenum!(
     bool,
@@ -364,7 +364,7 @@ unsafe impl PlainEnum for std::cmp::Ordering {
 
 #[cfg(test)]
 mod tests {
-    use plain_enum::*;
+    use crate::plain_enum::*;
     plain_enum_mod!{test_module, ETest {
         E1, E2, E3,
     }}
