@@ -78,7 +78,6 @@ mod plain_enum {
         }
     }
 
-    use std;
     use std::iter;
     use std::ops;
     use std::ops::{Index, IndexMut};
