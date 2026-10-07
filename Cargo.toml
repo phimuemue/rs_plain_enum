@@ -6,5 +6,6 @@ description = "Mimicing Java's enum::values() and EnumMap"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/phimuemue/rs_plain_enum"
 documentation = "https://docs.rs/plain_enum"
+edition = "2024"
 
 [dependencies]
